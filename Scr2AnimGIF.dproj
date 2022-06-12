@@ -88,7 +88,7 @@
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
         <DCC_ExeOutput>.\</DCC_ExeOutput>
-        <Debugger_RunParams>manicminer.scr -header manic -hw 128k -wobble -hiss -attrs -cls 56 -border partial -fb 0</Debugger_RunParams>
+        <Debugger_RunParams>manicminer.scr -header manic -hw 128k -wobble -hiss -cls 56 -border full -fb 0</Debugger_RunParams>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <DCC_RemoteDebug>false</DCC_RemoteDebug>
     </PropertyGroup>

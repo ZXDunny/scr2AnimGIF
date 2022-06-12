@@ -375,7 +375,10 @@ begin
     End;
 
     bx := (352 - bw) Div 2;
-    by := 48 - ((bh - 192) Div 2);
+    if BorderSize > 0 Then
+      by := 48 - ((bh - 192) Div 2)
+    Else
+      by := 0;
 
     SUrface := TFastDIB.Create;
     Surface.SetSize(bw, bh, 8);
