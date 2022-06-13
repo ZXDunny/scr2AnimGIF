@@ -691,6 +691,7 @@ end;
 
 procedure InvertMem(Mem:Pointer;Size:Integer);
 asm
+  {$IFNDEF CPUx64}
   push esi
   mov ecx,edx
   mov esi,eax
@@ -715,6 +716,7 @@ asm
   jnz @bytes
   @exit:
   pop esi
+  {$ENDIF}
 end;
 
 procedure Invert(Bmp:TFastDIB);

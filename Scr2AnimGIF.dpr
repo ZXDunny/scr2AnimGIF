@@ -87,10 +87,14 @@ Const
 begin
   try
 
+    WriteLn('Scr2AnimGIF v1.1 By Paul Dunn (C) 2022');
+    WriteLn('');
+
     preLoad_delay := -1;
     prePilot_delay := -1;
     Optimise_Data := False;
     FinalBorder := -1;
+    BorderSize := 0;
 
     Env.HardwareModel := h48k;
     Env.Programmer := pgmNone;
@@ -206,7 +210,7 @@ begin
       Inc(i);
     End;
 
-   // ROM loader
+    // ROM loader
 
     FillChar(Loader_Header, SizeOf(TLoaderInfo), 0);
     Loader_Header.Pilot_Border_1 := 5;
@@ -372,6 +376,11 @@ begin
           bw := 256;
           bh := 192;
         End;
+    Else
+      Begin
+        bw := 352;
+        bh := 296;
+      End;
     End;
 
     bx := (352 - bw) Div 2;

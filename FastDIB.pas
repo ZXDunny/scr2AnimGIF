@@ -205,7 +205,7 @@ procedure DecodeRLE4(Bmp:TFastDIB;Data:Pointer);
 procedure DecodeRLE8(Bmp:TFastDIB;Data:Pointer);
 procedure FillColors(Pal:PFColorTable;i1,i2,nKeys:Integer;Keys:PLine24);
 function  ClosestColor(Pal:PFColorTable;Max:Integer;c:TFColor):Byte;
-function  LoadHeader(Data:Pointer;var bmInfo:TBMInfo):Integer;
+function  LoadHeader(Data:Pointer;var bmInfo:TBMInfo):NativeUInt;
 function  PackedDIB(Bmp:TFastDIB):Pointer;
 function  CountColors(Bmp:TFastDIB):DWord;
 
@@ -418,7 +418,7 @@ end;
 
 procedure TFastDIB.SetInterface(fBits:Pointer;fWidth,fHeight:Integer;fBpp,fBpr,fBpg,fBpb:Byte);
 var
-  x,i: Integer;
+  x,i: NativeUInt;
   sDC: Windows.HDC;
 begin
 
@@ -538,7 +538,7 @@ begin
     end;
   end;
 
-  ReallocMem(Scanlines,AbsHeight shl 2);
+  ReallocMem(Scanlines,AbsHeight shl 4);
   Pixels8:=Pointer(Scanlines);
   Pixels16:=Pointer(Scanlines);
   Pixels24:=Pointer(Scanlines);
@@ -546,7 +546,7 @@ begin
 
   if AbsHeight>0 then
   begin
-    x:=Integer(Bits);
+    x := NativeUInt(Bits);
     for i:=0 to AbsHeight-1 do
     begin
       Scanlines[i]:=Ptr(x);
@@ -574,7 +574,7 @@ end;
 
 procedure TFastDIB.SetSubset(Bmp:TFastDIB;x,y,w,h:Integer);
 var
-  xOff,i: Integer;
+  xOff,i: NativeUInt;
 begin
   if(Bmp.Bits=nil)or(x>=Bmp.Width)or(y>=Bmp.AbsHeight)then Exit;
 
@@ -607,13 +607,13 @@ begin
     32: xOff:=x shl 2;
   end;
 
-  Bits:=Ptr(Integer(Bmp.Scanlines[y])+xOff);
+  Bits:=Ptr(NativeUInt(Bmp.Scanlines[y])+xOff);
   SetInterface(Bits,w,h,Bmp.Bpp,Bmp.Bpr,Bmp.Bpg,Bmp.Bpb);
   Size:=0;
   Dec(BWidth,Gap);
   Gap:=Bmp.BWidth-BWidth;
   Inc(BWidth,Gap);
-  xOff:=Integer(Bits);
+  xOff:=NativeUInt(Bits);
   Colors:=Bmp.Colors;
   hDC:=Bmp.hDC;
   FreeDC:=False;
@@ -661,7 +661,7 @@ var
   Buffer: Pointer;
   bmInfo: TBMInfo;
   hFile:  Windows.HFILE;
-  fBits,xSize,fSize: DWord;
+  fBits,xSize,fSize: NativeUInt;
 begin
   hFile:=CreateFile(PChar(FileName),GENERIC_READ,FILE_SHARE_READ,nil,OPEN_EXISTING,0,0);
   fSize:=GetFileSize(hFile,nil);
@@ -672,7 +672,7 @@ begin
   fBits:=LoadHeader(Buffer,bmInfo);
   SetSizeIndirect(bmInfo);
   SetFilePointer(hFile,fBits-xSize,nil,FILE_CURRENT);
-  if(bmInfo.Header.Compression=1)or(bmInfo.Header.Compression=2)then xSize:=PDWord(Integer(Buffer)+2)^-fBits else
+  if(bmInfo.Header.Compression=1)or(bmInfo.Header.Compression=2)then xSize:=PNativeUInt(NativeUInt(Buffer)+2)^-fBits else
   if fSize-fBits > Size then xSize:=Size else xSize:=fSize-fBits;
   if(bmInfo.Header.Compression=0)or(bmInfo.Header.Compression=3)then
     ReadFile(hFile,Bits^,xSize,i,nil)else
@@ -719,9 +719,9 @@ begin
       if pMem.Header.BitCount<=8 then i:=40+((1 shl pMem.Header.BitCount)shl 2)else
       if(((pMem.Header.BitCount=16)or(pMem.Header.BitCount=32))and(pMem.Header.Compression=3))then i:=52 else i:=40;
       if Bpp<=8 then Move(pMem.Colors,Colors^,(1 shl Bpp)shl 2);
-      if pMem.Header.Compression=1 then DecodeRLE8(Self,Ptr(Integer(pMem)+i))
-      else if pMem.Header.Compression=2 then DecodeRLE4(Self,Ptr(Integer(pMem)+i))
-      else Move(Ptr(Integer(pMem)+i)^,Bits^,pMem.Header.SizeImage);
+      if pMem.Header.Compression=1 then DecodeRLE8(Self,Ptr(NativeUInt(pMem)+i))
+      else if pMem.Header.Compression=2 then DecodeRLE4(Self,Ptr(NativeUInt(pMem)+i))
+      else Move(Ptr(NativeUInt(pMem)+i)^,Bits^,pMem.Header.SizeImage);
       GlobalUnlock(hMem);
     end;
     CloseClipboard;
@@ -1000,7 +1000,7 @@ end;
 
 procedure TFastDIB.CopyRect(Src:TFastDIB;x,y,w,h,sx,sy:Integer);
 var
-  iy,pc,sc,b: Integer;
+  iy,pc,sc,b: NativeUInt;
 begin
   if Height>0 then y:=AbsHeight-h-y;
   if Src.Height>0 then sy:=Src.Height-h-sy;
@@ -1066,8 +1066,8 @@ begin
         end;
       end;
 
-      pc:=Integer(Scanlines[y])+x;
-      sc:=Integer(Src.Scanlines[sy])+sx;
+      pc:=NativeUInt(Scanlines[y])+x;
+      sc:=NativeUInt(Src.Scanlines[sy])+sx;
 
       for iy:=0 to h-1 do
       begin
@@ -1127,7 +1127,7 @@ begin
       Inc(pc);
       Inc(pb);
     end;
-    pc:=Ptr(Integer(pc)+Bmp.Gap);
+    pc:=Ptr(NativeUInt(pc)+Bmp.Gap);
     Inc(pb,Alpha.Gap);
   end;
 end;
@@ -1156,7 +1156,7 @@ begin
       end;
       Inc(pc);
     end;
-    pc:=Ptr(Integer(pc)+Bmp.Gap);
+    pc:=Ptr(NativeUInt(pc)+Bmp.Gap);
   end;
 end;
 
@@ -1175,7 +1175,7 @@ begin
       pc.b:=z;
       Inc(pc);
     end;
-    pc:=Ptr(Integer(pc)+Bmp.Gap);
+    pc:=Ptr(NativeUInt(pc)+Bmp.Gap);
   end;
 end;
 
@@ -1194,7 +1194,7 @@ begin
       pc.b:=z;
       Inc(pc);
     end;
-    pc:=Ptr(Integer(pc)+Bmp.Gap);
+    pc:=Ptr(NativeUInt(pc)+Bmp.Gap);
   end;
 end;
 
@@ -1208,6 +1208,7 @@ end;
 
 procedure FillMem(Mem:Pointer;Size,Value:Integer);
 asm
+  {$IFNDEF CPUx64}
   push edi
   push ebx
 
@@ -1235,6 +1236,7 @@ asm
   @exit:
   pop ebx
   pop edi
+  {$ENDIF}
 end;
 
 procedure Clear(Bmp:TFastDIB;c:TFColor);
@@ -1449,14 +1451,14 @@ begin
   Result:=n;
 end;
 
-function LoadHeader(Data:Pointer;var bmInfo:TBMInfo):Integer;
+function LoadHeader(Data:Pointer;var bmInfo:TBMInfo):NativeUInt;
 var
   i: Integer;
 begin
-  if PDWord(Ptr(Integer(Data)+14))^=40 then
-    Move(Ptr(Integer(Data)+14)^,bmInfo,SizeOf(bmInfo))
-  else if PDWord(Ptr(Integer(Data)+14))^=12 then
-  with PBitmapCoreInfo(Ptr(Integer(Data)+14))^ do
+  if PDWord(Ptr(NativeUInt(Data)+14))^=40 then
+    Move(Ptr(NativeUInt(Data)+14)^,bmInfo,SizeOf(bmInfo))
+  else if PDWord(Ptr(NativeUInt(Data)+14))^=12 then
+  with PBitmapCoreInfo(Ptr(NativeUInt(Data)+14))^ do
   begin
     FillChar(bmInfo,SizeOf(bmInfo),0);
     bmInfo.Header.Width:=bmciHeader.bcWidth;
@@ -1466,7 +1468,7 @@ begin
     for i:=0 to (1 shl bmciHeader.bcBitCount)-1 do
       bmInfo.Colors[i]:=PFColorA(@bmciColors[i])^;
   end;
-  Result:=PDWord(Ptr(Integer(Data)+10))^;
+  Result:=PDWord(Ptr(NativeUInt(Data)+10))^;
 end;
 
 function PackedDIB(Bmp:TFastDIB):Pointer;
@@ -1582,7 +1584,7 @@ begin
       end;
       Inc(pw);
     end;
-    pw:=Ptr(Integer(pw)+Bmp.Gap);
+    pw:=Ptr(NativeUInt(pw)+Bmp.Gap);
   end;
 end;
 
@@ -1613,7 +1615,7 @@ begin
       end;
       Inc(pc);
     end;
-    pc:=Ptr(Integer(pc)+Bmp.Gap);
+    pc:=Ptr(NativeUInt(pc)+Bmp.Gap);
   end;
   Dispose(Check);
 end;
@@ -1780,6 +1782,7 @@ end;
 procedure GetCPUInfo;
   function HasCPUID:LongBool;
   asm
+    {$IFNDEF CPUx64}
     pushfd
     pop  eax
     mov  ecx,eax
@@ -1789,10 +1792,12 @@ procedure GetCPUInfo;
     pushfd
     pop  eax
     xor  eax,ecx
+    {$ENDIF}
   end;
 
   procedure CPUID(Flag:DWord;var Signature,Features:DWord);
   asm
+    {$IFNDEF CPUx64}
     push ebx
     push esi
     push edi
@@ -1804,10 +1809,12 @@ procedure GetCPUInfo;
     pop  edi
     pop  esi
     pop  ebx
+    {$ENDIF}
   end;
 
   function GetVendorID(VendorID:ShortString):DWord;
   asm
+    {$IFNDEF CPUx64}
     push edi
     push ebx
     push eax
@@ -1833,6 +1840,7 @@ procedure GetCPUInfo;
       dec ecx
     jnz @loop
     pop edi
+    {$ENDIF}
   end;
 var
   SysInfo: TSystemInfo;
