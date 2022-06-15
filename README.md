@@ -29,5 +29,8 @@ Options explained:
 
 -fb lets you specify the final border colour after loading is complete. Default 7 (white).
 
+-sound creates a wav file of the loading sound
+
+-mp4 outputs an mp4 video created from the gif and (if you have the -sound switch enabled) with full sound. This requires FFMpeg.exe to be present somewhere in your path - and it MUST be the correct bit version (x86 or x64) depending on which version of the Scr2AnimGIF executable you are running.
 
 FLASH and BRIGHT attributes work as you would expect.
