@@ -195,8 +195,8 @@ Var
   Current_Data: TLoaderInfo;
   Current_Environment: TEnvironmentInfo;    // Info about the environment - hardware, programming type etc
   Header_Data: Array of Byte;               // Binary dump of the header
-  Screen_Data: Array[0..6911] of Byte;      // Binary dump of the screen data - .scr format
-  Display: Array[0..6911] of Byte;          // An array for the screen to be loaded /to/. Used to make the display.
+  Screen_Data: Array[0..6913] of Byte;      // Binary dump of the screen data - .scr format
+  Display: Array[0..6912] of Byte;          // An array for the screen to be loaded /to/. Used to make the display.
   Data_Ptr: pByte;                          // Pointer to data to be loaded - points to either header or screen data.
   AttrAddresses: Array[0..6144] Of Integer; // Address of the attribute byte for each byte in the display
   ScreenAddresses: Array[0..191] of Integer;// Address of the first byte of each row
@@ -319,6 +319,7 @@ Begin
   // SoundPointer should point to a 1kb buffer for 8bit mono PCM output.
 
   SoundHandle := SoundPointer;
+  SoundPos := SoundHandle;
   SoundSize := 0;
   EarStatus := False;
   CreateKeyClicks;
@@ -542,12 +543,7 @@ Begin
 
   Result := False;
   Update := False;
-
-  // Initialise this frame's buffer of sound samples.
-
-  SoundPos := SoundHandle;
-  FillChar(SoundHandle^, 1024, 0);
-  SoundSize := 0;
+  TapeHiss := 0;
 
   // Flashing attributes change state every 16 frames.
 
@@ -566,11 +562,7 @@ Begin
         TapeWobble := Round(TapeWobbleFactor*Sin((TapeAngle/27)*PI/180));
      End;
 
-     // Tape hiss is a small random value that is added to the widths of the tape edges.
-
-     If Current_Environment.TapeHiss Then Begin
-        TapeHiss := Random(100)-50;
-     End;
+     LastTs := TStateCount;
 
      Case Stage of
 
@@ -682,6 +674,8 @@ Begin
               // In the pre-header delay, the border flips between pilot1 and pilot2 colours
               // roughly once per second - minus a small random amount. Pilot tones play for the final 1 second.
 
+              EarStatus := False;
+
               If Current_Loader.PreHeader_Delay = 0 Then Begin
 
                 Stage := lsPilot;
@@ -791,13 +785,9 @@ Begin
 
                  If PilotCount < Current_Loader.Pilot_Repeats Then Begin
 
-                    // Store the current TStates count - this will be where we draw *from*
+                    // draw *to* the width of a pulse. Should be about 8 or 9 lines.
 
-                    LastTs := TStateCount;
-
-                    // And draw *to* the width of a pulse. Should be about 8 or 9 lines.
-
-                    Inc(TStateCount, Current_loader.Pilot_Tone_Length + TapeWobble + TapeHiss);
+                    Inc(TStateCount, Current_loader.Pilot_Tone_Length + TapeWobble);
 
                     If PilotFrameCount = 0 Then Begin
                        Case PulseNumber of
@@ -814,7 +804,6 @@ Begin
 
                     PulseNumber := 1 - PulseNumber;
                     EarStatus := Not EarStatus;
-                    SoundOut(Current_Loader.Pilot_Tone_Length + TapeWobble + TapeHiss);
                     Inc(PilotCount);
 
                     If PilotCount = Current_Loader.Pilot_Repeats Then
@@ -826,13 +815,9 @@ Begin
 
                     If Pilot_Click_Count > 0 Then Begin
 
-                       // Store the current TStates count - this will be where we draw *from*
+                       // Draw *to* the width of a pulse. Should be about 8 or 9 lines.
 
-                       LastTs := TStateCount;
-
-                       // And draw *to* the width of a pulse. Should be about 8 or 9 lines.
-
-                       Inc(TStateCount, Current_loader.Pilot_Click_Length + TapeWobble + TapeHiss);
+                       Inc(TStateCount, Current_loader.Pilot_Click_Length + TapeWobble);
 
                        If PilotFrameCount = 0 Then Begin
                           Case PulseNumber of
@@ -849,7 +834,6 @@ Begin
 
                        PulseNumber := 1 - PulseNumber;
                        EarStatus := Not EarStatus;
-                       SoundOut(Current_Loader.Pilot_Click_Length + TapeWobble + TapeHiss);
                        Dec(Pilot_Click_Count);
 
                     End Else Begin
@@ -885,11 +869,9 @@ Begin
 
                        // Sync 1 - one flip of the pulse level
 
-                       LastTs := TStateCount;
-                       Inc(TStateCount, Current_Loader.Sync1_Length + TapeHiss);
+                       Inc(TStateCount, Current_Loader.Sync1_Length);
                        DrawDisplay(Current_Loader.Data_Border_1, LastTs, TStateCount);
                        EarStatus := Not EarStatus;
-                       SoundOut(Current_Loader.Sync1_Length);
                        DataStage := dsSync2;
 
                     End;
@@ -899,11 +881,9 @@ Begin
 
                        // Same for Sync2
 
-                       LastTs := TStateCount;
-                       Inc(TStateCount, Current_Loader.Sync2_Length + TapeHiss);
+                       Inc(TStateCount, Current_Loader.Sync2_Length);
                        DrawDisplay(Current_Loader.Data_Border_2, LastTs, TStateCount);
                        EarStatus := Not EarStatus;
-                       SoundOut(Current_Loader.Sync2_Length);
 
                        // Set up for the first byte of the coming data
 
@@ -925,17 +905,15 @@ Begin
                        // This could be the header, or the screen data. Two copies of this section handle
                        // the pulse flips (2 of) for each bit.
 
-                       LastTs := TStateCount;
                        LoadingByte := Data_Ptr^;
 
                        If LoadingByte And DataPosition_Bit = 0 Then
-                          Inc(TStateCount, Current_Loader.Data_Zero_Length + TapeHiss)
+                          Inc(TStateCount, Current_Loader.Data_Zero_Length)
                        Else
-                          Inc(TStateCount, Current_Loader.Data_One_Length + TapeHiss);
+                          Inc(TStateCount, Current_Loader.Data_One_Length);
 
                        DrawDisplay(Current_Loader.Data_Border_1, LastTs, TStateCount);
                        EarStatus := Not EarStatus;
-                       SoundOut(TStateCount - LastTs);
                        DataStage := dsData2;
 
                     End;
@@ -946,7 +924,6 @@ Begin
                        // This produces the mirrored level-flip which each bit needs.
                        // Also has extra handling for setting up the next bit/byte.
 
-                       LastTs := TStateCount;
                        LoadingByte := Data_Ptr^;
                        If WillDisruptChuntey Then
                           If DataPosition_Byte >= ChunteyPosition Then
@@ -968,13 +945,12 @@ Begin
                           End;
 
                        If LoadingByte And DataPosition_Bit = 0 Then
-                          Inc(TStateCount, Current_Loader.Data_Zero_Length + TapeHiss)
+                          Inc(TStateCount, Current_Loader.Data_Zero_Length)
                        Else
-                          Inc(TStateCount, Current_Loader.Data_One_Length + TapeHiss);
+                          Inc(TStateCount, Current_Loader.Data_One_Length);
 
                        DrawDisplay(Current_Loader.Data_Border_2, LastTs, TStateCount);
                        EarStatus := Not EarStatus;
-                       SoundOut(TStateCount - LastTs);
 
                        // Set up for the next bit, or the next byte if this one has finished.
 
@@ -988,16 +964,17 @@ Begin
 
                        End Else Begin
 
-                          // Next Byte.
+                          // Store what we have done, and set to the next byte.
 
-                          Inc(DataPosition_Byte);
+                          If (DataType = dtData) And (DataPosition_Byte > Current_Environment.StartAddress) And (DataPosition_Byte < Current_Environment.StartAddress + Current_loader.Data_Length) Then
+                             Display[DataPosition_Byte -1] := LoadingByte And 255;
+
                           DataPosition_Bit := 128;
-                          If DataPosition_Byte <= Current_Environment.StartAddress + Current_Loader.Data_Length Then Begin
+                          If DataPosition_Byte < Current_Environment.StartAddress + Current_Loader.Data_Length -1 Then Begin
 
                              Inc(Data_Ptr);
+                             Inc(DataPosition_Byte);
                              DataStage := dsData1;
-                             If DataType = dtData Then
-                                Display[DataPosition_Byte -1] := LoadingByte And 255;
 
                           End Else Begin
 
@@ -1022,7 +999,6 @@ Begin
                                 PilotFrameCount := 50;
                                 CopyMem(@Current_Loader.Pilot_Border_1, @Current_Data.Pilot_Border_1, SizeOf(TLoaderInfo));
                                 Update := True;
-                                TStateCount := TsPerFrame;
 
                              End Else Begin
 
@@ -1113,8 +1089,10 @@ Begin
 
                                 // Update the display and set the screensaver to its' final stage.
 
+                                SoundOut(TStateCount - LastTs);
                                 DrawDisplay(Current_Loader.FinalBorder, TStateCount, TsPerFrame);
                                 Stage := lsFinish;
+                                EarStatus := Not EarStatus;
                                 FrameCount := FrameCount And 15;
                                 FrameTarget := FrameCount + (Round(Current_Environment.PauseLen * 50));
                                 TStateCount := TsPerFrame;
@@ -1201,6 +1179,8 @@ Begin
 
      End;
 
+     SoundOut(TStateCount - LastTs);
+
   End;
 
   // Some parts (notably the reset and programming sections) update the screen all in one go - do this now,
@@ -1208,9 +1188,6 @@ Begin
 
   If Update Then Begin
      DrawDisplay(CurrentBorder, 0, TsPerFrame);
-     SoundSize := 0;
-     SoundPos := SoundHandle;
-     SoundOut(TsPerFrame);
      Result := True;
   End;
 
@@ -1228,7 +1205,8 @@ Begin
      Dec(SoundSize);
 
   Inc(FrameCount);
-  If PilotFrameCount > 0 Then Dec(PilotFrameCount);
+  If PilotFrameCount > 0 Then
+    Dec(PilotFrameCount);
 
 End;
 
@@ -1300,6 +1278,7 @@ End;
 
 Procedure SoundOut(ElapsedTStates: Integer);
 Var
+  tempInt: Integer;
   Sample, SampleHalf, SampleFull: Byte;
 Begin
 
@@ -1307,8 +1286,8 @@ Begin
   // waveform shaping, by halving the amplitude of the first sample after a
   // polarity change.
 
-  SampleHalf := Round((128 * Current_Environment.Sound_Volume)/256);
-  SampleFull := Round((256 * Current_Environment.Sound_Volume)/256);
+  SampleHalf := Round((16 * Current_Environment.Sound_Volume)/256);
+  SampleFull := Round((32 * Current_Environment.Sound_Volume)/256);
 
   If LastEarStatus <> EarStatus Then
      Sample := SampleHalf
@@ -1324,7 +1303,7 @@ Begin
 
   Inc(ElapsedTStates, LeftoverTStates);
 
-  While ElapsedTStates > 80 Do Begin
+  While ElapsedTStates > 79 Do Begin
 
      // One sample every 80Ts (or thereabouts) at 44.1khz.
 
@@ -1338,7 +1317,13 @@ Begin
         End Else Begin
            BufferingSample := False;
         End;
-     End;
+     End Else
+       If Current_Environment.TapeHiss Then Begin
+          tempInt := Sample + Random(64) -32;
+          if tempInt > 255 Then tempInt := 255;
+          if tempInt < 0 Then tempInt := 0;
+          Sample := tempInt;
+        End;
 
      If Not BufferingSample Then
         // Otherwise, sample the current tape signal.
@@ -1352,11 +1337,11 @@ Begin
 
      LastEarStatus := EarStatus;
 
-     Dec(ElapsedTStates, 80);
+     Dec(ElapsedTStates, 79);
 
      // Don't buffer more than 1000 bytes of sample - there should be no need.
 
-     If SoundSize < 1000 Then Begin
+     If SoundSize < 1024*1024 Then Begin
         Inc(SoundPos);
         Inc(SoundSize);
      End Else
@@ -3188,7 +3173,7 @@ Begin
   // Speccy tape header for the given filename. Screen_Data array must be filled
   // at this point, so a correct checksum can be generated.
 
-  SetLength(Header_Data, 18);
+  SetLength(Header_Data, 19);
 
   // First make a suitable filename - strip the extension and directory,
   // and truncate to 10 chars if necessary.
@@ -3199,34 +3184,30 @@ Begin
      Filename := Copy(Filename, 1, ExtPos -1);
   While Length(Filename) < 10 Do
      Filename := Filename + ' ';
-  If Not Current_Environment.LongFilenames Then
-     Filename := Copy(Filename, 1, 10);
-  Display_Name := Filename;
 
-  If Current_Environment.LongFilenames Then
-     SetLength(Header_Data, 18 + Length(Display_Name)-10);
+  Display_Name := Copy(Filename, 1, 10);
 
-  Header_Data[0] := 3;                         // CODE type byte
-  For Idx := 1 To Length(Display_Name) Do
-     Header_Data[Idx] := Ord(Filename[Idx]);   // Insert the filename
+  Header_Data[0] := 0;
+  Header_Data[1] := 3;                          // CODE type byte
+  For Idx := 2 To 11 Do
+     Header_Data[Idx] := Ord(Filename[Idx -1]); // Insert the filename
 
-  Idx := Length(Display_Name);
-  Header_Data[Idx+1] := Byte(6912 And 255);    // Low byte of file length
-  Header_Data[Idx+2] := Byte(6912 Shr 8);      // High byte of file length
-  Header_Data[Idx+3] := Byte(16384 And 255);   // Low byte of address
-  Header_Data[Idx+4] := Byte(16384 Shr 8);     // High Byte of address
-  Header_Data[Idx+5] := 0;                     // The last two bytes are unused in CODE blocks
-  Header_Data[Idx+6] := 0;
+  Header_Data[12] := Byte(6912 And 255);        // Low byte of file length
+  Header_Data[13] := Byte(6912 Shr 8);          // High byte of file length
+  Header_Data[14] := Byte(16384 And 255);       // Low byte of address
+  Header_Data[15] := Byte(16384 Shr 8);         // High Byte of address
+  Header_Data[16] := 0;                         // The last two bytes are unused in CODE blocks
+  Header_Data[17] := 128;
 
   // Calculate the checksum
 
-  Checksum := 3;
-  For ExtPos := 0 To 6911 Do
-     Checksum := Checksum Xor Screen_Data[ExtPos];
+  Checksum := 0;
+  For Idx := 0 To 17 Do
+     Checksum := Checksum Xor Header_Data[Idx];
 
   // And add it to the end.
 
-  Header_Data[Idx+7] := Checksum;
+  Header_Data[18] := Checksum;
 
 End;
 

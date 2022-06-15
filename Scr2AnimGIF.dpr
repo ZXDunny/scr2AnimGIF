@@ -5,18 +5,21 @@ program Scr2AnimGIF;
 {$R *.res}
 
 uses
-  System.SysUtils, System.Classes, FastDIB, FastFiles, FastFX, SpeccyScreen;
+  Windows, ShellAPI, System.SysUtils, System.Classes, FastDIB, FastFiles, FastFX, SpeccyScreen;
 
 var
   Surface, BorderDIB: TFastDIB;
-  Audio: Array[0..1023] of Byte;
+  Audio: Array[0..1024*1024] of Byte;
   Env: TEnvironmentInfo;
   Loader_Header, Loader_Data: TLoaderInfo;
-  Filename, OutFilename, s, ns: String;
-  FStream: TFileStream;
+  Filename, OutFilename, Outmp4Filename, OutwavFilename, s, ns: String;
+  WAVHeader: AnsiString;
+  FStream, wavFile: TFileStream;
   DisplayPalette: TFColorTable;
   i, preload_delay, prepilot_delay, BorderSize, bw, bh, bx, by, finalBorder, OldStage: Integer;
-  Optimise_Data: Boolean;
+  Optimise_Data, enableSound, mp4Out: Boolean;
+  AudioSize, WAVRIFFSize: Longword;
+  CheckSum: Byte;
 
 Const
 
@@ -84,10 +87,36 @@ Const
       End;
   End;
 
+function ExecuteAndWait(Const CommandLine: string): Boolean;
+var
+  StartupInfo: TStartupInfo;
+  AErrorOrExitCode: Cardinal;
+  ProcessInfo: TProcessInformation;
+  S : String;
+begin
+  FillChar(StartupInfo,Sizeof(StartupInfo),0);
+  StartupInfo.cb := Sizeof(StartupInfo);
+  S := CommandLine;
+  UniqueString(S);
+  if not CreateProcess(nil, PChar(S), nil, nil, False, NORMAL_PRIORITY_CLASS, nil, nil, StartupInfo,ProcessInfo) then Begin
+    Result := False;
+    AErrorOrExitCode := GetLastError;
+    if GetLastError = 50 Then
+      WriteLn('Cannot open FFMpeg - wrong arch?');
+    Halt;
+  end else begin
+    Result := True;
+    WaitforSingleObject(ProcessInfo.hProcess,INFINITE);
+    GetExitCodeProcess(ProcessInfo.hProcess, AErrorOrExitCode);
+    CloseHandle(ProcessInfo.hProcess);
+    CloseHandle(ProcessInfo.hThread);
+  end;
+end;
+
 begin
   try
 
-    WriteLn('Scr2AnimGIF v1.1 By Paul Dunn (C) 2022');
+    WriteLn('Scr2AnimGIF v1.2 By Paul Dunn (C) 2022');
     WriteLn('');
 
     preLoad_delay := -1;
@@ -95,6 +124,7 @@ begin
     Optimise_Data := False;
     FinalBorder := -1;
     BorderSize := 0;
+    enableSound := False;
 
     Env.HardwareModel := h48k;
     Env.Programmer := pgmNone;
@@ -107,6 +137,7 @@ begin
     Env.DoHeader := False;
     Env.AttrsOnly := False;
     Env.CLSAttr := 56;
+    Env.Sound_Volume := 255;
 
     // Gather command line options
     // filename
@@ -122,6 +153,8 @@ begin
     // -attr - only load ATTRs. Overrides -addr.
     // -cls b - clear the screen to the chosen byte value before loading.
     // -fb final border colour to end on while the last pause is happening
+    // -mp4 - output mp4 format
+    // -mp4sound - output mp4 with sound
 
     i := 1;
     While i <= ParamCount Do Begin
@@ -205,8 +238,14 @@ begin
                                 End;
                                 Inc(i);
                               End Else
-                                Filename := ParamStr(i);
-
+                                If Lowercase(ParamStr(i)) = '-mp4' Then Begin
+                                  mp4Out := True;
+                                  enableSound := False;
+                                End Else
+                                  If Lowercase(ParamStr(i)) = '-sound' Then Begin
+                                    enableSound := True;
+                                  End Else
+                                    Filename := ParamStr(i);
       Inc(i);
     End;
 
@@ -215,7 +254,7 @@ begin
     FillChar(Loader_Header, SizeOf(TLoaderInfo), 0);
     Loader_Header.Pilot_Border_1 := 5;
     Loader_Header.Pilot_Border_2 := 2;
-    Loader_Header.Pilot_Repeats := 8064;
+    Loader_Header.Pilot_Repeats := 8063;
     Loader_Header.Pilot_Tone_Length := 2168;
     Loader_Header.Pilot_Loops := 1;
     Loader_Header.Sync1_Length := 667;
@@ -223,17 +262,17 @@ begin
     Loader_Header.Data_Border_1 := 1;
     Loader_Header.Data_Border_2 := 6;
     Loader_Header.Data_One_Length := 1710;
-    Loader_Header.Data_Zero_Length := 835;
-    Loader_Header.Data_Pause_Length := 928;
+    Loader_Header.Data_Zero_Length := 855;
+    Loader_Header.Data_Pause_Length := 0;
     Loader_Header.PreLoad_Delay := 20;
     Loader_Header.PreHeader_Delay := 50;
-    Loader_Header.Data_Length := 17;
+    Loader_Header.Data_Length := 19;
     Loader_Header.FinalBorder := 2;
 
     FillChar(Loader_Data, SizeOf(TLoaderInfo), 0);
     Loader_Data.Pilot_Border_1 := 5;
     Loader_Data.Pilot_Border_2 := 2;
-    Loader_Data.Pilot_Repeats := 3220;
+    Loader_Data.Pilot_Repeats := 3223;
     Loader_Data.Pilot_Tone_Length := 2168;
     Loader_Data.Pilot_Loops := 1;
     Loader_Data.Sync1_Length := 667;
@@ -241,11 +280,11 @@ begin
     Loader_Data.Data_Border_1 := 1;
     Loader_Data.Data_Border_2 := 6;
     Loader_Data.Data_One_Length := 1710;
-    Loader_Data.Data_Zero_Length := 835;
+    Loader_Data.Data_Zero_Length := 855;
     Loader_Data.Data_Pause_Length := 2000;
-    Loader_Data.PreLoad_Delay := 20;
+    Loader_Data.PreLoad_Delay := 0;
     Loader_Data.PreHeader_Delay := 50;
-    Loader_Data.Data_Length := 6912;
+    Loader_Data.Data_Length := 6914;
     Loader_Data.FinalBorder := 7;
 
 {    // Speedlock 1
@@ -342,15 +381,15 @@ begin
         Loader_Data.PreHeader_Delay := PrePilot_Delay;
 
     If Env.AttrsOnly Then Begin
-      Loader_Data.Data_Length := 768;
+      Loader_Data.Data_Length := 769;
       Env.StartAddress := 6144;
     End;
 
     If finalBorder > -1 Then
       Loader_Data.FinalBorder := finalBorder;
 
-    If Loader_Data.Data_Length + Env.StartAddress > 6912 Then
-      Loader_Data.Data_Length := 6912 -Env.StartAddress;
+    If Loader_Data.Data_Length + Env.StartAddress > 6914 Then
+      Loader_Data.Data_Length := (6912 - Env.StartAddress) + 2;
 
     BuildPalette([TFSpecBlack, TFSpecBlue,  TFSpecRed,  TFSpecMagenta,  TFSpecGreen,  TFSpecCyan,  TFSpecYellow,  TFSpecWhite,
                   TFSpecBlack, TFSpecBlueB, TFSpecRedB, TFSpecMagentaB, TFSpecGreenB, TFSpecCyanB, TFSpecYellowB, TFSpecWhiteB]);
@@ -400,8 +439,14 @@ begin
     BorderDIB.UpdateColors;
 
     FStream := TFileStream.Create(Filename, fmOpenRead or fmShareDenyNone);
-    FStream.Read(Screen_Data[0], 6912);
+    FStream.Read(Screen_Data[1], 6912);
     FStream.Free;
+
+    Checksum := 0;
+    Screen_Data[0] := $FF;
+    For i := 0 to 6912 do
+      CheckSum := CheckSum Xor Screen_Data[i];
+    Screen_Data[6913] := CheckSum;
 
     If outFilename = '' Then
       OutFilename := ChangeFileExt(Filename, '.gif');
@@ -412,16 +457,32 @@ begin
     InitScreenSaver(BorderDIB.Bits, @Audio[0], @Env);
     NewLoad(Filename, @Loader_Header, @Loader_Data, False);
 
-    WriteLn('Creating ' + OutFilename);
+    if mp4Out then
+      WriteLn('Creating ' + ChangeFileExt(OutFilename, '.mp4'))
+    else
+      WriteLn('Creating ' + OutFilename);
 
     If Optimise_Data Then Optimise;
 
     OldStage := -1;
 
-    Frame;
+    SpeccyScreen.Frame;
     Flop(BorderDIB);
     BorderDIB.Draw(Surface.hDc, -bx, -by);
+
     SaveGIFFile(Surface, OutFilename, True, 2, True);
+
+    if enableSound Then Begin
+      OutWAVFilename := ChangeFileExt(OutFilename, '.wav');
+      wavfile := TFileStream.Create(OutWAVFilename, fmCreate);
+      WAVHeader := 'RIFF' + #0#0#0#0 + 'WAVE' + 'fmt ' + #16#0#0#0 + #1#0 + #1#0 + #68#172#0#0 + #68#172#0#0 + #1#0 + #8#0 + 'data' + #0#0#0#0;
+      wavFile.Write(WAVHeader[1], Length(WAVHeader));
+      wavFile.Write(Audio, SoundSize);
+      Inc(AudioSize, SoundSize);
+      SoundPos := @Audio[0];
+      FillChar(SoundPos^, 1024 * 1024, 0);
+      SoundSize := 0;
+    End;
 
     While True Do Begin
 
@@ -439,23 +500,51 @@ begin
           lsPause:
             Write('Working: Post-data pause  ' + #13);
           lsFinish, lsQuit:
-            Write('Finished!                 ' + #13);
+            If mp4Out Then
+              Write('Working: Encoding       ' + #13)
+            Else
+              Write('Finished!               ' + #13);
         End;
       End;
 
-      Frame;
+      SpeccyScreen.Frame;
       If InProgress Then Begin
         Flop(BorderDIB);
         BorderDIB.Draw(Surface.hDc, -bx, -by);
         AddGIFFrame(Surface, OutFilename, 2, True);
+        if enableSound Then Begin
+          wavFile.Write(Audio, SoundSize);
+          Inc(AudioSize, SoundSize);
+          SoundPos := @Audio[0];
+          FillChar(SoundPos^, 1024 * 1024, 0);
+          SoundSize := 0;
+        end;
       End Else
         Break;
     End;
 
     AddGIFFrame(nil, OutFilename, 0, True);
+    if enableSound Then Begin
+      wavFile.Seek(4, soFromBeginning);
+      WAVRIFFSize := AudioSize + (44 - 8);
+      wavFile.Write(WAVRIFFSize, 4);
+      wavFile.Seek(40, soFromBeginning);
+      wavFile.Write(AudioSize, 4);
+      wavFile.free;
+    end;
+
+    if mp4Out Then Begin
+      Outmp4Filename := ChangeFileExt(OutFilename, '.mp4');
+      if FileExists(Outmp4Filename) Then DeleteFile(Outmp4Filename);
+      if enableSound then
+        ExecuteAndWait('ffmpeg.exe -hide_banner -loglevel fatal -i "' + OutFilename + '" -i "' + OutwavFilename + '" -preset veryslow -tune animation -crf 22 -vf colormatrix=bt601:bt709 -pix_fmt yuv420p "' + Outmp4Filename +'"')
+      else
+        ExecuteAndWait('ffmpeg.exe -hide_banner -loglevel fatal -i "' + OutFilename + '" -preset veryslow -tune animation -crf 22 -vf colormatrix=bt601:bt709 -pix_fmt yuv420p "' + Outmp4Filename +'"');
+    End;
 
   except
     on E: Exception do
       Writeln(E.ClassName, ': ', E.Message);
   end;
+
 end.
