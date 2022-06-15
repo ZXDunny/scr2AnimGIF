@@ -4,3 +4,7 @@
 *.rsm
 Scr2AnimGIF.~dsk
 ffmpeg.exe
+*.gif
+*.mp4
+*.scr
+*.wav

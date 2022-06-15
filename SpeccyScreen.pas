@@ -533,7 +533,7 @@ Var
   ChangeAtTStates, Idx: Integer;
   LoadingByte: LongInt;
   Ink: Byte;
-  Update: Boolean;
+  Update, LastEAR: Boolean;
   TempStr: String;
 Begin
 
@@ -552,6 +552,8 @@ Begin
   While TStateCount < TsPerFrame Do Begin
 
      // If preferred, set the Tape Wobble and Hiss variables to be added to tones later
+
+     LastEAR := EarStatus;
 
      If (Current_Environment.TapeWobble) and (Stage > lsPostProgram) Then Begin
         Inc(TapeAngle, Round(Current_Loader.Pilot_Tone_Length / Current_Loader.Data_Zero_Length));
@@ -998,6 +1000,10 @@ Begin
                                 FrameTarget := FrameCount + (Current_Loader.Data_Pause_Length Div 20) +50;
                                 PilotFrameCount := 50;
                                 CopyMem(@Current_Loader.Pilot_Border_1, @Current_Data.Pilot_Border_1, SizeOf(TLoaderInfo));
+
+                                SoundOut(TStateCount - LastTs);
+                                LastEar := Not LastEar; // hack to ensure the final edge is completed
+                                EarStatus := Not EarStatus;
                                 Update := True;
 
                              End Else Begin
@@ -1092,10 +1098,11 @@ Begin
                                 SoundOut(TStateCount - LastTs);
                                 DrawDisplay(Current_Loader.FinalBorder, TStateCount, TsPerFrame);
                                 Stage := lsFinish;
+                                LastEar := Not LastEar; // hack to ensure the final edge is completed
                                 EarStatus := Not EarStatus;
                                 FrameCount := FrameCount And 15;
                                 FrameTarget := FrameCount + (Round(Current_Environment.PauseLen * 50));
-                                TStateCount := TsPerFrame;
+                                Inc(TStateCount, 79);
                                 Update := True;
 
                              End;
@@ -1179,7 +1186,8 @@ Begin
 
      End;
 
-     SoundOut(TStateCount - LastTs);
+     if EarStatus <> LastEar Then
+        SoundOut(TStateCount - LastTs);
 
   End;
 
@@ -1286,16 +1294,8 @@ Begin
   // waveform shaping, by halving the amplitude of the first sample after a
   // polarity change.
 
-  SampleHalf := Round((16 * Current_Environment.Sound_Volume)/256);
-  SampleFull := Round((32 * Current_Environment.Sound_Volume)/256);
-
-  If LastEarStatus <> EarStatus Then
-     Sample := SampleHalf
-  Else
-     If EarStatus Then
-        Sample := SampleFull
-     Else
-        Sample := 0;
+  SampleFull := Current_Environment.Sound_Volume Div 8;
+  SampleHalf := SampleFull;
 
   // Left over TStates are those that didn't make it into the loop last time round.
   // by taking them into account, we maintain the correct sound pitch and also the
@@ -1307,6 +1307,18 @@ Begin
 
      // One sample every 80Ts (or thereabouts) at 44.1khz.
 
+     If LastEarStatus <> EarStatus Then
+        Sample := SampleHalf
+     Else
+        Sample := SampleFull;
+
+      LastEarStatus := EarStatus;
+
+      If not EarStatus Then
+        Sample := 128 - Sample
+     else
+        Sample := 128 + Sample;
+
      If BufferingSample Then Begin
         // If a sample has been selected to be played, then buffer
         // data from that sample rather than from the simulated EAR bit.
@@ -1317,29 +1329,18 @@ Begin
         End Else Begin
            BufferingSample := False;
         End;
-     End Else
+     End Else Begin
        If Current_Environment.TapeHiss Then Begin
           tempInt := Sample + Random(64) -32;
           if tempInt > 255 Then tempInt := 255;
           if tempInt < 0 Then tempInt := 0;
           Sample := tempInt;
         End;
-
-     If Not BufferingSample Then
         // Otherwise, sample the current tape signal.
-        If EarStatus Then Begin
-           pByte(SoundPos)^ := Sample;
-           Sample := SampleFull;
-        End Else Begin
-           pByte(SoundPos)^ := Sample;
-           Sample := 0;
-        End;
-
-     LastEarStatus := EarStatus;
+        pByte(SoundPos)^ := Sample;
+     End;
 
      Dec(ElapsedTStates, 79);
-
-     // Don't buffer more than 1000 bytes of sample - there should be no need.
 
      If SoundSize < 1024*1024 Then Begin
         Inc(SoundPos);
@@ -1393,8 +1394,8 @@ begin
 
      {calculate and write out the tone signal}
 
-     SoundValue := (255 * Current_Environment.Sound_Volume) Div 256;
-     SilenceValue := 0;
+     SoundValue := Current_Environment.Sound_Volume Div 8;
+     SilenceValue := 128;
 
      Case SoundType of
         0: Begin // 48k Keyclick

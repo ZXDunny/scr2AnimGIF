@@ -105,7 +105,7 @@
         <DCC_IOChecking>false</DCC_IOChecking>
         <DCC_DebugDCUs>false</DCC_DebugDCUs>
         <Manifest_File>None</Manifest_File>
-        <Debugger_RunParams>.\Win32\Debug\alien8.scr -header -hw 48k -pa 10 -cls 56 -border full -fb 0 -mp4 -sound</Debugger_RunParams>
+        <Debugger_RunParams>TubeThe.scr -header &quot;The Tube&quot; -hw 48k -pa 10 -cls 56 -border full -fb 0 -mp4 -sound</Debugger_RunParams>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <DCC_ExeOutput>.\</DCC_ExeOutput>
     </PropertyGroup>
@@ -545,13 +545,13 @@
                         <Operation>1</Operation>
                     </Platform>
                 </DeployClass>
-                <ProjectRoot Platform="iOSSimulator" Name="$(PROJECTNAME).app"/>
+                <ProjectRoot Platform="iOSDevice32" Name="$(PROJECTNAME).app"/>
                 <ProjectRoot Platform="Android" Name="$(PROJECTNAME)"/>
                 <ProjectRoot Platform="Win32" Name="$(PROJECTNAME)"/>
                 <ProjectRoot Platform="iOSDevice64" Name="$(PROJECTNAME).app"/>
                 <ProjectRoot Platform="Win64" Name="$(PROJECTNAME)"/>
+                <ProjectRoot Platform="iOSSimulator" Name="$(PROJECTNAME).app"/>
                 <ProjectRoot Platform="OSX32" Name="$(PROJECTNAME).app"/>
-                <ProjectRoot Platform="iOSDevice32" Name="$(PROJECTNAME).app"/>
             </Deployment>
             <Platforms>
                 <Platform value="OSX32">False</Platform>

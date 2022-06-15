@@ -116,7 +116,7 @@ end;
 begin
   try
 
-    WriteLn('Scr2AnimGIF v1.2 By Paul Dunn (C) 2022');
+    WriteLn('Scr2AnimGIF v1.3 By Paul Dunn (C) 2022');
     WriteLn('');
 
     preLoad_delay := -1;
@@ -154,7 +154,7 @@ begin
     // -cls b - clear the screen to the chosen byte value before loading.
     // -fb final border colour to end on while the last pause is happening
     // -mp4 - output mp4 format
-    // -mp4sound - output mp4 with sound
+    // -sound - output mp4 or wav with sound
 
     i := 1;
     While i <= ParamCount Do Begin
@@ -466,11 +466,16 @@ begin
 
     OldStage := -1;
 
+    // Initial frame
+
+    FillChar(Audio, 1024 * 1024, 128);
     SpeccyScreen.Frame;
     Flop(BorderDIB);
     BorderDIB.Draw(Surface.hDc, -bx, -by);
 
     SaveGIFFile(Surface, OutFilename, True, 2, True);
+
+    // Now continue.
 
     if enableSound Then Begin
       OutWAVFilename := ChangeFileExt(OutFilename, '.wav');
@@ -480,7 +485,7 @@ begin
       wavFile.Write(Audio, SoundSize);
       Inc(AudioSize, SoundSize);
       SoundPos := @Audio[0];
-      FillChar(SoundPos^, 1024 * 1024, 0);
+      FillChar(SoundPos^, 1024 * 1024, 128);
       SoundSize := 0;
     End;
 
@@ -516,7 +521,7 @@ begin
           wavFile.Write(Audio, SoundSize);
           Inc(AudioSize, SoundSize);
           SoundPos := @Audio[0];
-          FillChar(SoundPos^, 1024 * 1024, 0);
+          FillChar(SoundPos^, 1024 * 1024, 128);
           SoundSize := 0;
         end;
       End Else
