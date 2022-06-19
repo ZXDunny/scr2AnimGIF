@@ -117,7 +117,7 @@ end;
 begin
   try
 
-    WriteLn('Scr2AnimGIF v1.3 By Paul Dunn (C) 2022');
+    WriteLn('Scr2AnimGIF v1.31 By Paul Dunn (C) 2022');
     WriteLn('');
 
     preLoad_delay := -1;
