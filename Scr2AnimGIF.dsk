@@ -32,12 +32,12 @@ File_28=TSourceModule,'D:\Projects\SpecBAS\src\dglOpenGL.pas',0,1,20594,1,20620,
 [Modules]
 Module0=D:\Projects\scr2AnimGIF\SpeccyScreen.pas
 Module1=D:\Projects\scr2AnimGIF\Scr2AnimGIF.dproj
-Module2=c:\program files (x86)\embarcadero\studio\16.0\source\rtl\win\Winapi.Windows.pas
-Module3=D:\Projects\scr2AnimGIF\FastFiles.pas
-Module4=D:\Projects\scr2AnimGIF\FastDIB.pas
-Module5=D:\Projects\scr2AnimGIF\FastFX.pas
-Module6=D:\Projects\BASin\components\FastLib\FastFX.pas
-Module7=D:\Projects\BASin\components\FastLib\FastFiles.pas
+Module2=D:\Projects\BASin\components\FastLib\FastFiles.pas
+Module3=c:\program files (x86)\embarcadero\studio\16.0\source\rtl\win\Winapi.Windows.pas
+Module4=D:\Projects\scr2AnimGIF\FastFiles.pas
+Module5=D:\Projects\scr2AnimGIF\FastDIB.pas
+Module6=D:\Projects\scr2AnimGIF\FastFX.pas
+Module7=D:\Projects\BASin\components\FastLib\FastFX.pas
 Module8=D:\Projects\BASin\components\FastLib\FastDIB.pas
 Count=9
 EditWindowCount=1
@@ -49,6 +49,11 @@ FormOnTop=0
 
 [D:\Projects\scr2AnimGIF\Scr2AnimGIF.dproj]
 ModuleType=TBaseProject
+
+[D:\Projects\BASin\components\FastLib\FastFiles.pas]
+ModuleType=TSourceModule
+FormState=0
+FormOnTop=0
 
 [c:\program files (x86)\embarcadero\studio\16.0\source\rtl\win\Winapi.Windows.pas]
 ModuleType=TSourceModule
@@ -71,11 +76,6 @@ FormState=0
 FormOnTop=0
 
 [D:\Projects\BASin\components\FastLib\FastFX.pas]
-ModuleType=TSourceModule
-FormState=0
-FormOnTop=0
-
-[D:\Projects\BASin\components\FastLib\FastFiles.pas]
 ModuleType=TSourceModule
 FormState=0
 FormOnTop=0
@@ -126,12 +126,12 @@ TabDockBottomClients=MessageView=0,DockSite1=1
 [View0]
 CustomEditViewType=TEditView
 Module=D:\Projects\scr2AnimGIF\Scr2AnimGIF.dpr
-CursorX=28
-CursorY=13
-TopLine=1
+CursorX=1
+CursorY=487
+TopLine=476
 LeftCol=1
 Elisions=
-Bookmarks={1,438,36}
+Bookmarks=
 EditViewName=D:\Projects\scr2AnimGIF\Scr2AnimGIF.dpr
 
 [View1]
@@ -194,7 +194,7 @@ CustomEditViewType=TEditView
 Module=D:\Projects\BASin\components\FastLib\FastFiles.pas
 CursorX=47
 CursorY=5
-TopLine=193
+TopLine=1054
 LeftCol=1
 Elisions=
 Bookmarks={1,705,1}
@@ -203,12 +203,12 @@ EditViewName=D:\Projects\BASin\components\FastLib\FastFiles.pas
 [View7]
 CustomEditViewType=TEditView
 Module=D:\Projects\scr2AnimGIF\SpeccyScreen.pas
-CursorX=148
-CursorY=698
-TopLine=676
+CursorX=118
+CursorY=1193
+TopLine=1170
 LeftCol=1
 Elisions=
-Bookmarks={1,3403,1}
+Bookmarks={1,1098,1}
 EditViewName=D:\Projects\scr2AnimGIF\SpeccyScreen.pas
 
 [View8]
@@ -248,15 +248,17 @@ Dockable=1
 StayOnTop=0
 
 [Breakpoints]
-Count=1
-Breakpoint0='D:\Projects\scr2AnimGIF\SpeccyScreen.pas',1019,'',0,1,'',1,0,0,'',1,'','','',0,''
+Count=2
+Breakpoint0='D:\Projects\scr2AnimGIF\SpeccyScreen.pas',1014,'',0,1,'',1,0,0,'',1,'','','',0,''
+Breakpoint1='D:\Projects\scr2AnimGIF\Scr2AnimGIF.dpr',487,'',0,1,'',1,0,0,'',1,'','','',0,''
 
 [EmbarcaderoWin32Debugger_AddressBreakpoints]
 Count=1
-Breakpoint0='Address','$00520D0C','Display_Name',4,1,'Scr2AnimGIF.exe','',0,0,'',1,0,0,'',1,'','','',0,''
+Breakpoint0='Address','$00520D0C','Display_Name',4,1,'','',0,0,'',1,0,0,'',1,'','','',0,''
 
 [EmbarcaderoWin64Debugger_AddressBreakpoints]
-Count=0
+Count=1
+Breakpoint0='Address','$00000000006CA113','mp4out',1,1,'Scr2AnimGIF.exe','',0,0,'',1,0,0,'',1,'','','',0,''
 
 [EmbarcaderoOSXDebugger_AddressBreakpoints]
 Count=0
@@ -314,7 +316,7 @@ MaxLeft=-1
 MaxTop=-1
 ClientWidth=2771
 ClientHeight=1769
-TBDockHeight=1731
+TBDockHeight=2423
 LRDockWidth=2771
 Dockable=1
 StayOnTop=0
@@ -521,12 +523,12 @@ Docked=1
 State=0
 Left=0
 Top=0
-Width=2000
-Height=8538
+Width=3740
+Height=8163
 MaxLeft=-1
 MaxTop=-1
-ClientWidth=2000
-ClientHeight=8538
+ClientWidth=3740
+ClientHeight=8163
 TBDockHeight=212
 LRDockWidth=7406
 Dockable=1
@@ -563,12 +565,12 @@ Docked=1
 State=0
 Left=0
 Top=0
-Width=3740
-Height=8163
+Width=2000
+Height=8538
 MaxLeft=-1
 MaxTop=-1
-ClientWidth=3740
-ClientHeight=8163
+ClientWidth=2000
+ClientHeight=8538
 TBDockHeight=2067
 LRDockWidth=3484
 Dockable=1
@@ -685,12 +687,12 @@ Docked=1
 State=0
 Left=0
 Top=0
-Width=2000
-Height=8538
+Width=3740
+Height=8163
 MaxLeft=-1
 MaxTop=-1
-ClientWidth=2000
-ClientHeight=8538
+ClientWidth=3740
+ClientHeight=8163
 TBDockHeight=1548
 LRDockWidth=8740
 Dockable=1
@@ -808,7 +810,7 @@ LRDockWidth=3823
 Dockable=1
 StayOnTop=0
 TabPosition=1
-ActiveTabID=DebugLogView
+ActiveTabID=BreakpointWindow
 TabDockClients=DebugLogView,BreakpointWindow,ThreadStatusWindow,CallStackWindow,WatchWindow,LocalVarsWindow
 
 [DockSite2]
@@ -833,5 +835,5 @@ Dockable=1
 StayOnTop=0
 TabPosition=1
 ActiveTabID=ProjectManager
-TabDockClients=ProjectManager,StructureView,ToolForm,PropertyInspector,ModelViewTool,DataExplorerContainer,frmDesignPreview,ClassBrowserTool,TemplateView,TFileExplorerForm
+TabDockClients=ProjectManager,StructureView,ToolForm,PropertyInspector,ModelViewTool,DataExplorerContainer,frmDesignPreview,ClassBrowserTool,TFileExplorerForm,TemplateView
 

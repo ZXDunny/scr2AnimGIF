@@ -16,8 +16,9 @@ var
   WAVHeader: AnsiString;
   FStream, wavFile: TFileStream;
   DisplayPalette: TFColorTable;
-  i, preload_delay, prepilot_delay, BorderSize, bw, bh, bx, by, finalBorder, OldStage: Integer;
-  Optimise_Data, enableSound, mp4Out: Boolean;
+  i, preload_delay, prepilot_delay, BorderSize, bw, bh, bx, by, finalBorder, OldStage, BitCount,
+  TotalBits, Avg, TotalTs, ZeroLen, OneLen, FixedPulseLen: Integer;
+  Optimise_Data, FixedLen, enableSound, mp4Out: Boolean;
   AudioSize, WAVRIFFSize: Longword;
   CheckSum: Byte;
 
@@ -125,6 +126,7 @@ begin
     FinalBorder := -1;
     BorderSize := 0;
     enableSound := False;
+    FixedLen := False;
 
     Env.HardwareModel := h48k;
     Env.Programmer := pgmNone;
@@ -245,7 +247,16 @@ begin
                                   If Lowercase(ParamStr(i)) = '-sound' Then Begin
                                     enableSound := True;
                                   End Else
-                                    Filename := ParamStr(i);
+                                    if Lowercase(ParamStr(i)) = '-fixed' Then Begin
+                                      FixedLen := True;
+                                      FixedPulseLen := StrToInt(ns);
+                                      If (FixedPulseLen < 0) or (FixedPulseLen > 10000) Then Begin
+                                        WriteLn('Invalid fixed pulse length');
+                                        Halt;
+                                      End;
+                                      Inc(i);
+                                    End Else
+                                      Filename := ParamStr(i);
       Inc(i);
     End;
 
@@ -454,6 +465,22 @@ begin
     If Env.HeaderName = '' Then Env.HeaderName := Copy(ExtractFileName(Filename), 1, 10);
     MakeHeader(Env.HeaderName);
 
+    If FixedLen Then Begin
+      BitCount := 0;
+      For i := 0 To Length(Header_Data) -1 Do
+        Inc(BitCount, SetCount[Ord(Header_Data[i])]);
+      For i := 0 To Length(Screen_Data) -1 Do
+        Inc(BitCount, SetCount[Ord(Screen_Data[i])]);
+      TotalBits := (6914 + 19) * 8;
+      TotalTs := Loader_Data.Data_Zero_Length * TotalBits * 2;
+      ZeroLen := Round(TotalTs/(BitCount + BitCount + (TotalBits - BitCount)) / 2);
+      OneLen := FixedPulseLen * 2;
+      Loader_Header.Data_One_length := OneLen;
+      Loader_Header.Data_Zero_Length := ZeroLen;
+      Loader_Data.Data_One_length := OneLen;
+      Loader_Data.Data_Zero_Length := ZeroLen;
+    End;
+
     InitScreenSaver(BorderDIB.Bits, @Audio[0], @Env);
     NewLoad(Filename, @Loader_Header, @Loader_Data, False);
 
@@ -487,6 +514,9 @@ begin
       SoundPos := @Audio[0];
       FillChar(SoundPos^, 1024 * 1024, 128);
       SoundSize := 0;
+    End Else Begin
+      SoundPos := @Audio[0];
+      SoundSize := 0;
     End;
 
     While True Do Begin
@@ -514,7 +544,7 @@ begin
 
       SpeccyScreen.Frame;
       If InProgress Then Begin
-        Flop(BorderDIB);
+       Flop(BorderDIB);
         BorderDIB.Draw(Surface.hDc, -bx, -by);
         AddGIFFrame(Surface, OutFilename, 2, True);
         if enableSound Then Begin
@@ -523,7 +553,10 @@ begin
           SoundPos := @Audio[0];
           FillChar(SoundPos^, 1024 * 1024, 128);
           SoundSize := 0;
-        end;
+        end Else Begin
+          SoundPos := @Audio[0];
+          SoundSize := 0;
+        End;
       End Else
         Break;
     End;

@@ -8,3 +8,5 @@ ffmpeg.exe
 *.mp4
 *.scr
 *.wav
+*.bin
+Scr2AnimGIF.exe
