@@ -533,7 +533,7 @@ Var
   ChangeAtTStates, Idx: Integer;
   LoadingByte: LongInt;
   Ink: Byte;
-  Update, LastEAR: Boolean;
+  Update, LastEAR, InPause: Boolean;
   TempStr: String;
 Begin
 
@@ -542,6 +542,7 @@ Begin
   // Result is True when graphics have been drawn and need updating.
 
   Result := False;
+  InPause := False;
   Update := False;
   TapeHiss := 0;
 
@@ -677,6 +678,7 @@ Begin
               // roughly once per second - minus a small random amount. Pilot tones play for the final 1 second.
 
               EarStatus := False;
+              InPause := True;
 
               If Current_Loader.PreHeader_Delay = 0 Then Begin
 
@@ -699,6 +701,7 @@ Begin
                    If FrameCount > Current_Loader.PreHeader_Delay + Current_Loader.PreLoad_Delay Then Begin
 
                       Stage := lsPilot;
+                      InPause := False;
                       PilotCount := 0;
                       Pilot_Loop_Count := Current_Loader.Pilot_Loops;
                       Pilot_Click_Count := Current_Loader.Pilot_Click_Repeats;
@@ -986,6 +989,7 @@ Begin
 
                              If DataType = dtHeader Then Begin
 
+                                InPause := True;
                                 Inc(ScreenATLine);
                                 If ScreenATLine = 22 Then Begin
                                    Dec(ScreenATLine);
@@ -1186,7 +1190,7 @@ Begin
 
      End;
 
-     if EarStatus <> LastEar Then
+     if InPause or (EarStatus <> LastEar) Then
         SoundOut(TStateCount - LastTs);
 
   End;
@@ -1331,7 +1335,7 @@ Begin
         End;
      End Else Begin
        If Current_Environment.TapeHiss Then Begin
-          tempInt := Sample + Random(64) -32;
+          tempInt := Sample + Random(8) -4;
           if tempInt > 255 Then tempInt := 255;
           if tempInt < 0 Then tempInt := 0;
           Sample := tempInt;
