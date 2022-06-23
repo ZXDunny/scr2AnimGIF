@@ -139,7 +139,7 @@ end;
 begin
   try
 
-    WriteLn('Scr2AnimGIF v1.32 By Paul Dunn (C) 2022');
+    WriteLn('Scr2AnimGIF v1.33 By Paul Dunn (C) 2022');
     WriteLn('');
 
     preLoad_delay := -1;
@@ -531,7 +531,7 @@ begin
 
     // Now continue.
 
-    if enableSound Then Begin
+    if enableSound or mp4Out Then Begin
       OutWAVFilename := ChangeFileExt(OutFilename, '.wav');
       wavfile := TFileStream.Create(OutWAVFilename, fmCreate);
       WAVHeader := 'RIFF' + #0#0#0#0 + 'WAVE' + 'fmt ' + #16#0#0#0 + #1#0 + #1#0 + #68#172#0#0 + #68#172#0#0 + #1#0 + #8#0 + 'data' + #0#0#0#0;
@@ -581,15 +581,23 @@ begin
           FillChar(SoundPos^, 1024 * 1024, 128);
           SoundSize := 0;
         end Else Begin
-          SoundPos := @Audio[0];
-          SoundSize := 0;
+          if mp4Out Then Begin
+            SoundPos := @Audio[0];
+            FillChar(SoundPos^, 1024 * 1024, 128);
+            wavFile.Write(Audio, SoundSize);
+            Inc(AudioSize, SoundSize);
+            SoundSize := 0;
+          End Else Begin
+            SoundPos := @Audio[0];
+            SoundSize := 0;
+          End;
         End;
       End Else
         Break;
     End;
 
     AddGIFFrame(nil, OutFilename, 0, True);
-    if enableSound Then Begin
+    if enableSound or mp4Out Then Begin
       wavFile.Seek(4, soFromBeginning);
       WAVRIFFSize := AudioSize + (44 - 8);
       wavFile.Write(WAVRIFFSize, 4);
@@ -601,10 +609,10 @@ begin
     if mp4Out Then Begin
       Outmp4Filename := ChangeFileExt(OutFilename, '.mp4');
       if FileExists(Outmp4Filename) Then DeleteFile(Outmp4Filename);
-      if enableSound then
-        ExecuteAndWait('ffmpeg.exe -hide_banner -loglevel fatal -i "' + OutFilename + '" -i "' + OutwavFilename + '" -preset veryslow -tune animation -crf 22 -vf colormatrix=bt601:bt709 -pix_fmt yuv420p "' + Outmp4Filename +'"')
-      else
-        ExecuteAndWait('ffmpeg.exe -hide_banner -loglevel fatal -i "' + OutFilename + '" -preset veryslow -tune animation -crf 22 -vf colormatrix=bt601:bt709 -pix_fmt yuv420p "' + Outmp4Filename +'"');
+      ExecuteAndWait('ffmpeg.exe -hide_banner -loglevel fatal -i "' + OutFilename + '" -i "' + OutwavFilename + '" -r 50 -vsync cfr -preset veryslow -tune animation -crf 22 -vf colormatrix=bt601:bt709 -pix_fmt yuv420p "' + Outmp4Filename +'"');
+      if not enableSound then
+        if FileExists(OutWAVFilename) Then
+          DeleteFile(OutWAVFilename);
     End;
 
   except
