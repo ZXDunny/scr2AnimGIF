@@ -5,10 +5,10 @@ program Scr2AnimGIF;
 {$R *.res}
 
 uses
-  Windows, ShellAPI, System.SysUtils, System.Classes, FastDIB, FastFiles, FastFX, SpeccyScreen;
+  Windows, ShellAPI, System.SysUtils, System.Classes, FastDIB, FastFiles, FastFX, FastSize, SpeccyScreen;
 
 var
-  Surface, BorderDIB: TFastDIB;
+  Surface, BorderDIB, ScaleDIB: TFastDIB;
   Audio: Array[0..1024*1024] of Byte;
   Env: TEnvironmentInfo;
   Loader_Header, Loader_Data: TLoaderInfo;
@@ -17,14 +17,14 @@ var
   FStream, wavFile: TFileStream;
   DisplayPalette: TFColorTable;
   i, preload_delay, prepilot_delay, BorderSize, bw, bh, bx, by, finalBorder, OldStage, BitCount,
-  TotalBits, Avg, TotalTs, ZeroLen, OneLen, FixedPulseLen: Integer;
+  TotalBits, Avg, TotalTs, ZeroLen, OneLen, FixedPulseLen, Scale: Integer;
   Optimise_Data, FixedLen, enableSound, mp4Out: Boolean;
   AudioSize, WAVRIFFSize: Longword;
   CheckSum: Byte;
 
 Const
 
-  help: array[0..19] of String = (
+  help: array[0..20] of String = (
     'Speccy screen file (.scr) converter to animated GIF files.',
     '',
     'SCR2AnimGIF.exe Filename -o Outfilename -hw (48k/128k) -hiss -wobble -pa/pb/pp -header [name] -border (full/partial/small/none) -opt -cls n -attrs -fb n',
@@ -43,6 +43,7 @@ Const
     '-sound creates a wav file of the loading sound',
     '-mp4 outputs an mp4 video created from the gif and (if you have the -sound switch enabled) with full sound.',
     'This requires FFMpeg.exe to be present somewhere in your path - and it MUST be the correct bit version (x86 or x64) depending on which version of the Scr2AnimGIF executable you are running.',
+    '-scale n scales to the selected size (2, 3, 4, etc)',
     '',
     'FLASH and BRIGHT attributes work as you would expect.');
 
@@ -139,7 +140,7 @@ end;
 begin
   try
 
-    WriteLn('Scr2AnimGIF v1.33 By Paul Dunn (C) 2022');
+    WriteLn('Scr2AnimGIF v1.34 By Paul Dunn (C) 2022');
     WriteLn('');
 
     preLoad_delay := -1;
@@ -150,6 +151,7 @@ begin
     enableSound := False;
     FixedLen := False;
     mp4Out := False;
+    Scale := 1;
 
     Env.HardwareModel := h48k;
     Env.Programmer := pgmNone;
@@ -283,7 +285,15 @@ begin
                                           WriteLn(Help[i]);
                                         Halt;
                                       End Else
-                                        Filename := ParamStr(i);
+                                        if Lowercase(ParamStr(i)) = '-scale' Then Begin
+                                          Scale := StrToInt(ns);
+                                          if Scale < 1 Then Begin
+                                            WriteLn('Invalid scaling value');
+                                            Halt;
+                                          End;
+                                          Inc(i);
+                                        End Else
+                                          Filename := ParamStr(i);
       Inc(i);
     End;
 
@@ -527,7 +537,15 @@ begin
     Flop(BorderDIB);
     BorderDIB.Draw(Surface.hDc, -bx, -by);
 
-    SaveGIFFile(Surface, OutFilename, True, 2, True);
+    If Scale > 1 Then Begin
+      ScaleDIB := TFastDIB.Create;
+      ScaleDIB.SetSize(bw * Scale, bh * Scale, 8);
+      ScaleDIB.Colors := @DisplayPalette;
+      ScaleDIB.UpdateColors;
+      FastReSize(Surface, ScaleDIB);
+      SaveGIFFile(ScaleDIB, OutFilename, True, 2, True);
+    End Else
+      SaveGIFFile(Surface, OutFilename, True, 2, True);
 
     // Now continue.
 
@@ -571,9 +589,13 @@ begin
 
       SpeccyScreen.Frame;
       If InProgress Then Begin
-       Flop(BorderDIB);
+        Flop(BorderDIB);
         BorderDIB.Draw(Surface.hDc, -bx, -by);
-        AddGIFFrame(Surface, OutFilename, 2, True);
+        If Scale > 1 Then Begin
+          FastReSize(Surface, ScaleDIB);
+          AddGIFFrame(ScaleDIB, OutFilename, 2, True);
+        End Else
+          AddGIFFrame(Surface, OutFilename, 2, True);
         if enableSound Then Begin
           wavFile.Write(Audio, SoundSize);
           Inc(AudioSize, SoundSize);

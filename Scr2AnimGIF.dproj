@@ -106,7 +106,7 @@
         <DCC_RangeChecking>true</DCC_RangeChecking>
         <DCC_DebugDCUs>false</DCC_DebugDCUs>
         <Manifest_File>None</Manifest_File>
-        <Debugger_RunParams>&quot;atic atac.scr&quot; -hw 48k  -pa 3 -header  -border partial  -fb 0 -mp4</Debugger_RunParams>
+        <Debugger_RunParams>&quot;atic atac.scr&quot; -hw 48k  -pa 3 -header  -border partial  -fb 0 -mp4 -scale 3</Debugger_RunParams>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <DCC_ExeOutput>.\</DCC_ExeOutput>
     </PropertyGroup>
