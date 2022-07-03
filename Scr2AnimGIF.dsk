@@ -126,9 +126,9 @@ TabDockBottomClients=MessageView=0,DockSite1=1
 [View0]
 CustomEditViewType=TEditView
 Module=D:\Projects\scr2AnimGIF\Scr2AnimGIF.dpr
-CursorX=51
-CursorY=147
-TopLine=126
+CursorX=93
+CursorY=569
+TopLine=548
 LeftCol=1
 Elisions=
 Bookmarks=
@@ -203,9 +203,9 @@ EditViewName=D:\Projects\BASin\components\FastLib\FastFiles.pas
 [View7]
 CustomEditViewType=TEditView
 Module=D:\Projects\scr2AnimGIF\SpeccyScreen.pas
-CursorX=1
-CursorY=1
-TopLine=364
+CursorX=33
+CursorY=1138
+TopLine=1099
 LeftCol=1
 Elisions=
 Bookmarks={1,1102,1}
