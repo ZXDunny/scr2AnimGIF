@@ -59,6 +59,7 @@ Type
      Looped: Integer;                       // Looped? 0 = no, -1 = loop forever, n = loop n times and then finish.
      TapeWobble: Boolean;                   // Apply old-tape-deck style wobbling in pilot tones?
      TapeHiss: Boolean;                     // Apply old-tape style hissing to the sound?
+     LowPass: Boolean;                      // Add a lowpass filter to the sound. Less harsh.
      Sound_Enabled: Boolean;                // User wants sound? He must be mad.
      Sound_Volume: Integer;                 // The volume of the loading sounds etc - 0..255
      RandomHWAfterReset: Boolean;           // Choose Random hardware after a reset?
@@ -268,6 +269,7 @@ Var
   GOTOLine: Integer;                        // The line number that program execution resumes at after an error R.
   LOADLine, LOADStatement: Integer;         // The line/Statement that caused Error R if it occurs.
   RUNEntered: Boolean;                      // Last command of the program was "RUN"?, if so signal a CLS.
+  LastSample: Array[0..3] of Byte;
 
 // Procedure and function declarations
 
@@ -1290,7 +1292,7 @@ End;
 
 Procedure SoundOut(ElapsedTStates: Integer);
 Var
-  tempInt: Integer;
+  tempInt, i, newSample: Integer;
   Sample, SampleHalf, SampleFull: Byte;
 Begin
 
@@ -1334,14 +1336,24 @@ Begin
            BufferingSample := False;
         End;
      End Else Begin
-       If Current_Environment.TapeHiss Then Begin
-          tempInt := Sample + Random(8) -4;
+       If Current_Environment.TapeHiss and (Stage = lsPilot) Then Begin
+          tempInt := Sample + Random(4) -2;
           if tempInt > 255 Then tempInt := 255;
           if tempInt < 0 Then tempInt := 0;
           Sample := tempInt;
         End;
         // Otherwise, sample the current tape signal.
-        pByte(SoundPos)^ := Sample;
+        if Current_Environment.LowPass then Begin
+          newSample := Sample;
+          for i := 0 to 3 do begin
+            newSample := newSample + LastSample[i];
+            if i < 3 then
+              LastSample[i] := LastSample[i +1];
+          end;
+          LastSample[3] := Sample;
+          pByte(SoundPos)^ := Byte(newSample Div 4);
+        end else
+          pByte(SoundPos)^ := Sample;
      End;
 
      Dec(ElapsedTStates, 79);

@@ -24,7 +24,7 @@ var
 
 Const
 
-  help: array[0..20] of String = (
+  help: array[0..22] of String = (
     'Speccy screen file (.scr) converter to animated GIF files.',
     '',
     'SCR2AnimGIF.exe Filename -o Outfilename -hw (48k/128k) -hiss -wobble -pa/pb/pp -header [name] -border (full/partial/small/none) -opt -cls n -attrs -fb n',
@@ -41,6 +41,8 @@ Const
     '-attrs - only load the attributes from the .scr file. Manic Miner looks good with this.',
     '-fb lets you specify the final border colour after loading is complete. Default 7 (white).',
     '-sound creates a wav file of the loading sound',
+    '-volume sets volume (0 to 255)',
+    '-lowpass adds a low pass sound filter',
     '-mp4 outputs an mp4 video created from the gif and (if you have the -sound switch enabled) with full sound.',
     'This requires FFMpeg.exe to be present somewhere in your path - and it MUST be the correct bit version (x86 or x64) depending on which version of the Scr2AnimGIF executable you are running.',
     '-scale n scales to the selected size (2, 3, 4, etc)',
@@ -90,57 +92,62 @@ Const
   Begin
     For Y := 0 To 23 Do
       For X := 0 To 31 Do Begin
-         Addr := ScreenAddresses[Y * 8] + X;
-         For Idx := 0 To 7 Do Begin
-            Bytes[Idx] := Byte(Screen_Data[Addr + (Idx * 256)]);
-            BytesInverted[Idx] := Bytes[Idx] Xor 255;
-         End;
-         Bytes[8] := Byte(Screen_Data[6144 + (Y * 32) + X]);
-         BytesInverted[8] := ((Bytes[8] And 7) Shl 3) + ((Bytes[8] And 56) shr 3) + (Bytes[8] And 192);
-         Count := 0;
-         CountInverted := 0;
-         For Idx := 0 To 7 Do Begin
-            Inc(Count, SetCount[Bytes[Idx]]);
-            Inc(CountInverted, SetCount[BytesInverted[Idx]]);
-         End;
-         If CountInverted < Count Then Begin
-            For Idx := 0 To 7 Do
-               Screen_Data[Addr + (Idx * 256)] := BytesInverted[Idx];
-            Screen_Data[6144 + (Y * 32) + X] := BytesInverted[8];
-         End;
-      End;
+        Addr := ScreenAddresses[Y * 8] + X;
+        For Idx := 0 To 7 Do Begin
+          Bytes[Idx] := Byte(Screen_Data[Addr + (Idx * 256)]);
+          BytesInverted[Idx] := Bytes[Idx] Xor 255;
+        End;
+        Bytes[8] := Byte(Screen_Data[6144 + (Y * 32) + X]);
+        If (Bytes[8] And 7 = (Bytes[8] Shr 3) And 7) Then Begin
+          For Idx := 0 To 7 Do
+            Bytes[Idx] := 0;
+          Bytes[8] := Bytes[8] And 127;
+        End;
+        BytesInverted[8] := ((Bytes[8] And 7) Shl 3) + ((Bytes[8] And 56) shr 3) + (Bytes[8] And 192);
+        Count := 0;
+        CountInverted := 0;
+        For Idx := 0 To 7 Do Begin
+          Inc(Count, SetCount[Bytes[Idx]]);
+          Inc(CountInverted, SetCount[BytesInverted[Idx]]);
+        End;
+        If CountInverted < Count Then Begin
+          For Idx := 0 To 7 Do
+            Screen_Data[Addr + (Idx * 256)] := BytesInverted[Idx];
+          Screen_Data[6144 + (Y * 32) + X] := BytesInverted[8];
+        End;
+    End;
   End;
 
-function ExecuteAndWait(Const CommandLine: string): Boolean;
-var
-  StartupInfo: TStartupInfo;
-  AErrorOrExitCode: Cardinal;
-  ProcessInfo: TProcessInformation;
-  S : String;
-begin
-  FillChar(StartupInfo,Sizeof(StartupInfo),0);
-  StartupInfo.cb := Sizeof(StartupInfo);
-  S := CommandLine;
-  UniqueString(S);
-  if not CreateProcess(nil, PChar(S), nil, nil, False, NORMAL_PRIORITY_CLASS, nil, nil, StartupInfo,ProcessInfo) then Begin
-    Result := False;
-    AErrorOrExitCode := GetLastError;
-    if GetLastError = 50 Then
-      WriteLn('Cannot open FFMpeg - wrong arch?');
-    Halt;
-  end else begin
-    Result := True;
-    WaitforSingleObject(ProcessInfo.hProcess,INFINITE);
-    GetExitCodeProcess(ProcessInfo.hProcess, AErrorOrExitCode);
-    CloseHandle(ProcessInfo.hProcess);
-    CloseHandle(ProcessInfo.hThread);
+  function ExecuteAndWait(Const CommandLine: string): Boolean;
+  var
+    StartupInfo: TStartupInfo;
+    AErrorOrExitCode: Cardinal;
+    ProcessInfo: TProcessInformation;
+    S : String;
+  begin
+    FillChar(StartupInfo,Sizeof(StartupInfo),0);
+    StartupInfo.cb := Sizeof(StartupInfo);
+    S := CommandLine;
+    UniqueString(S);
+    if not CreateProcess(nil, PChar(S), nil, nil, False, NORMAL_PRIORITY_CLASS, nil, nil, StartupInfo,ProcessInfo) then Begin
+      Result := False;
+      AErrorOrExitCode := GetLastError;
+      if GetLastError = 50 Then
+        WriteLn('Cannot open FFMpeg - wrong arch?');
+      Halt;
+    end else begin
+      Result := True;
+      WaitforSingleObject(ProcessInfo.hProcess,INFINITE);
+      GetExitCodeProcess(ProcessInfo.hProcess, AErrorOrExitCode);
+      CloseHandle(ProcessInfo.hProcess);
+      CloseHandle(ProcessInfo.hThread);
+    end;
   end;
-end;
 
 begin
   try
 
-    WriteLn('Scr2AnimGIF v1.34 By Paul Dunn (C) 2022');
+    WriteLn('Scr2AnimGIF v1.35 By Paul Dunn (C) 2022');
     WriteLn('');
 
     preLoad_delay := -1;
@@ -165,6 +172,7 @@ begin
     Env.AttrsOnly := False;
     Env.CLSAttr := 56;
     Env.Sound_Volume := 255;
+    Env.LowPass := False;
 
     // Gather command line options
     // filename
@@ -293,7 +301,18 @@ begin
                                           End;
                                           Inc(i);
                                         End Else
-                                          Filename := ParamStr(i);
+                                          If Lowercase(ParamStr(i)) = '-lowpass' Then Begin
+                                            env.LowPass := True;
+                                          end else
+                                            if Lowercase(ParamStr(i)) = '-volume' Then Begin
+                                              Env.Sound_Volume := StrToInt(ns);
+                                              if (Env.Sound_Volume < 0) or (Env.Sound_Volume > 255) Then Begin
+                                                WriteLn('Invalid volume value (0..255)');
+                                                Halt;
+                                              End;
+                                              Inc(i);
+                                            End Else
+                                              Filename := ParamStr(i);
       Inc(i);
     End;
 
